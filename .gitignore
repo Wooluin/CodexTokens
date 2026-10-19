@@ -1,0 +1,10 @@
+# 运行时产生的本地数据（含个人用量，勿上传）
+cache.json
+merges.json
+settings.json
+ui_state.json
+dist/
+build/
+__pycache__/
+_check.js
+*.lnk

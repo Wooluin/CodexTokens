@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; background: #f5f6f7; color: #1a1a1a; }
+  .wrap { padding: 24px 32px 32px; display: flex; flex-direction: column; height: 100vh; }
+  h1 { font-size: 22px; font-weight: 600; }
+  .sub { color: #999; font-size: 12px; margin-top: 6px; }
+  .sub b { color: #4a90d9; font-weight: 500; }
+
+  /* 顶部控制条 */
+  .controls { display: flex; align-items: center; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+  .tabs { display: flex; background: #e9ebee; border-radius: 9px; padding: 3px; }
+  .tabs button { border: 0; background: transparent; padding: 6px 20px; font-size: 13px;
+                 border-radius: 7px; cursor: pointer; color: #666; font-family: inherit; }
+  .tabs button.on { background: #fff; color: #1677ff; font-weight: 600;
+                    box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .nav { display: flex; align-items: center; gap: 8px; background: #fff; border-radius: 9px;
+         padding: 4px 6px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+  .nav button { border: 0; background: transparent; width: 28px; height: 28px; font-size: 15px;
+                cursor: pointer; color: #555; border-radius: 6px; }
+  .nav button:hover { background: #f0f0f0; }
+  .nav .plabel { font-size: 13px; font-weight: 600; min-width: 190px; text-align: center;
+                 font-variant-numeric: tabular-nums; }
+  .nav input[type=date] { border: 1px solid #e3e3e3; border-radius: 6px; padding: 3px 6px;
+                          font-size: 12px; color: #555; font-family: inherit; }
+  .today-btn { border: 1px solid #d9e6ff; background: #f0f7ff; color: #1677ff; font-size: 12px;
+               border-radius: 8px; padding: 7px 14px; cursor: pointer; font-family: inherit; }
+  .today-btn.on { background: #1677ff; color: #fff; border-color: #1677ff; }
+  .yi { color: #d4380d; font-weight: 700; }
+
+  .cards { display: flex; gap: 14px; margin-top: 18px; flex-wrap: wrap; }
+  .card { background: #fff; border-radius: 12px; padding: 16px 20px; flex: 1; min-width: 150px;
+          box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+  .card .label { font-size: 13px; color: #888; }
+  .card .value { font-size: 26px; font-weight: 600; margin-top: 8px; font-variant-numeric: tabular-nums; }
+  .card .unit { font-size: 13px; color: #999; font-weight: 400; margin-left: 4px; }
+  .card.accent .value { color: #1677ff; }
+  .card.green .value { color: #2e7d32; }
+  .qbtn { display: inline-flex; align-items: center; justify-content: center;
+          width: 15px; height: 15px; margin-left: 6px; border-radius: 50%;
+          background: #e3ecfb; color: #1677ff; font-size: 11px; font-weight: 700;
+          cursor: pointer; vertical-align: 1px; user-select: none; }
+  .qbtn:hover { background: #1677ff; color: #fff; }
+
+  /* 每亿均价 · 官方标价对比弹窗 */
+  .modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 1000;
+                display: none; align-items: center; justify-content: center; }
+  .modal-mask.show { display: flex; }
+  .modal { background: #fff; border-radius: 14px; width: min(880px, 92vw);
+           max-height: 88vh; overflow-y: auto; padding: 20px 24px 14px;
+           box-shadow: 0 8px 40px rgba(0,0,0,.22); }
+  .modal h3 { font-size: 16px; font-weight: 600; display: flex; align-items: center;
+              justify-content: space-between; gap: 12px; }
+  .modal .mclose { border: 0; background: #f0f1f3; width: 24px; height: 24px;
+                   border-radius: 50%; cursor: pointer; color: #666; font-size: 12px;
+                   flex-shrink: 0; font-family: inherit; }
+  .modal .mclose:hover { background: #e2e4e8; }
+  .modal .mdesc { font-size: 12px; color: #888; margin: 8px 0 12px; line-height: 1.8; }
+  .modal .legend { display: flex; gap: 20px; font-size: 12px; color: #666; margin: 2px 0 6px; }
+  .modal .legend i { display: inline-block; width: 18px; height: 0;
+                     border-top: 3px solid #fa8c16; margin-right: 5px;
+                     vertical-align: 3px; border-radius: 2px; }
+  .modal .legend i.mine { border-top: 2px dashed #2e7d32; }
+  .price-chart svg { display: block; }
+  .modal table { table-layout: auto; }
+  .modal th { padding: 6px 10px; white-space: nowrap; }
+  .modal td { padding: 7px 10px; white-space: nowrap; font-size: 12px; }
+  .modal td.num, .modal th.num { font-variant-numeric: tabular-nums; }
+  .modal td .tip { font-size: 11px; color: #bbb; margin-left: 4px; }
+  .modal .mine { color: #2e7d32; font-weight: 600; }
+  .modal .pct { color: #d4380d; font-weight: 600; }
+  .modal .msrc { font-size: 11px; color: #bbb; margin: 12px 0 4px; line-height: 1.7; }
+
+  .section { background: #fff; border-radius: 12px; margin-top: 20px; padding: 8px 0 14px;
+             box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+  .section h2 { font-size: 15px; font-weight: 600; padding: 14px 22px 6px;
+                display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .section h2 .tip { font-size: 12px; color: #aaa; font-weight: 400; margin-left: 8px; }
+  #search { border: 1px solid #e3e3e3; border-radius: 8px; padding: 6px 12px;
+            font-size: 13px; width: 240px; font-family: inherit; outline: none;
+            color: #333; font-weight: 400; flex-shrink: 0; }
+  #search:focus { border-color: #1677ff; box-shadow: 0 0 0 2px rgba(22,119,255,.1); }
+  #groupSel { border: 1px solid #e3e3e3; border-radius: 8px; padding: 6px 8px;
+              font-size: 13px; font-family: inherit; outline: none; color: #333;
+              background: #fff; flex-shrink: 0; max-width: 180px; }
+  .selbar .cancel, .selbar .sbtn { border: 1px solid #ffe58f; background: #fff;
+                    color: #ad6800; border-radius: 5px; font-size: 11px;
+                    padding: 1px 8px; cursor: pointer; margin-left: 10px;
+                    font-family: inherit; }
+  .selbar .sbtn.on { background: #fa8c16; border-color: #fa8c16; color: #fff; }
+  .tip a { color: #f5222d; cursor: pointer; text-decoration: underline; }
+
+  /* 柱状图 */
+  .chart { display: flex; align-items: flex-end; gap: 3px; height: 190px;
+           padding: 16px 22px 4px; }
+  .col { flex: 1; display: flex; flex-direction: column; align-items: center;
+         justify-content: flex-end; height: 100%; min-width: 0; }
+  .col .v { font-size: 10px; color: #999; margin-bottom: 3px; white-space: nowrap;
+            transform: scale(.9); visibility: hidden; }
+  .col:hover .v { visibility: visible; }
+  .col .bar { width: 70%; max-width: 46px; background: #1677ff; border-radius: 4px 4px 0 0;
+              min-height: 2px; transition: height .3s; }
+  .col.dim .bar { background: #bcd7ff; }
+  .col .x { font-size: 11px; color: #999; margin-top: 6px; white-space: nowrap;
+            transform: scale(.85); }
+  .chart-tip { font-size: 12px; color: #888; padding: 0 22px 8px; text-align: right; }
+
+  /* API 折线图 */
+  .chart.line { display: block; height: auto; padding: 10px 22px 4px; }
+  .chart.line .line-svg { height: 180px; }
+  .chart.line .line-svg svg { width: 100%; height: 100%; display: block; }
+  .api-line { stroke: #fa8c16; stroke-width: 2; fill: none; stroke-linejoin: round;
+              stroke-linecap: round; }
+  .api-area { fill: rgba(250,140,22,.13); stroke: none; }
+  .api-dot { fill: #fff; stroke: #fa8c16; stroke-width: 1.6; }
+  .chart.line .line-labels { display: flex; }
+  .chart.line .line-labels span { flex: 1; text-align: center; font-size: 11px;
+                                  color: #999; white-space: nowrap; transform: scale(.85); }
+
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  th { text-align: left; font-size: 12px; color: #999; font-weight: 400;
+       padding: 6px 22px; border-top: 1px solid #f0f0f0; background: #fafafa;
+       position: relative; }
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { color: #1677ff; }
+  th .arr { font-size: 10px; color: #1677ff; }
+  th .drag { position: absolute; right: -4px; top: 0; width: 9px; height: 100%;
+             cursor: col-resize; z-index: 2; }
+  th .drag:hover { background: rgba(22,119,255,.18); }
+  td { padding: 9px 22px; font-size: 13px; border-top: 1px solid #f5f5f5; }
+  td.time { color: #888; white-space: nowrap; font-variant-numeric: tabular-nums;
+            overflow: hidden; text-overflow: ellipsis; }
+  td.label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.cost { text-align: right; color: #f5222d; font-variant-numeric: tabular-nums; }
+  tr.live td { background: #f0f7ff; }
+  .badge { display: inline-block; font-size: 11px; color: #1677ff; background: #e6f4ff;
+           border-radius: 4px; padding: 1px 6px; margin-left: 6px; }
+  .list { max-height: 420px; overflow-y: auto; }
+  /* 明细区撑满窗口剩余高度，内部滚动 */
+  #listSection { flex: 1; min-height: 180px; display: flex; flex-direction: column; }
+  #listSection .sec-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .sec-body .list { flex: 1; min-height: 0; max-height: none; overflow-y: auto; }
+  .loading { text-align: center; color: #bbb; padding: 50px 0; font-size: 14px; }
+  .empty { text-align: center; color: #ccc; padding: 40px 0; font-size: 13px; }
+  td.ops { white-space: nowrap; }
+  .opbtn { border: 1px solid #e0e0e0; background: #fff; border-radius: 5px; font-size: 11px;
+           color: #777; padding: 1px 7px; cursor: pointer; margin-right: 4px;
+           font-family: inherit; }
+  .opbtn:hover { color: #1677ff; border-color: #1677ff; }
+  .inline-edit { border: 1px solid #1677ff; border-radius: 4px; padding: 2px 6px; font-size: 13px;
+                 font-family: inherit; width: 100%; min-width: 90px; outline: none;
+                 box-shadow: 0 0 0 2px rgba(22,119,255,.12); }
+  tr.flash td { background: #fff2c9 !important; }
+  tr.drop td { background: #ffe7ba !important; }
+  /* 合并任务的展开三角与子任务行 */
+  td.time { position: relative; }
+  .tri { cursor: pointer; color: #bbb; font-size: 9px; user-select: none;
+         position: absolute; left: 3px; top: 50%; transform: translateY(-50%);
+         width: 12px; text-align: center; }
+  .tri:hover { color: #1677ff; }
+  tr.kidrow td { background: #fafbfc; color: #999; font-size: 12px; }
+  tr.kidrow td.label { padding-left: 40px; }
+  /* 周/月/年分组视图：天 = 组头行（可收纳） */
+  tr.day-group { background: #f4f8ff; cursor: pointer; }
+  tr.day-group:hover td { background: #edf4ff; }
+  tr.day-group td { padding: 7px 22px; border-bottom: 1px solid #e8eef7; }
+  tr.day-group.collapsed td { border-bottom: 1px solid #dfe6f0; }
+  .dg-arrow { color: #1677ff; margin-right: 9px; font-size: 11px; user-select: none; }
+  tr.day-group b { color: #1f2937; font-size: 13px; font-weight: 600; }
+  .dg-info { color: #8a94a6; font-size: 12px; margin-left: 10px; }
+  /* 任务行多选 */
+  tr.sel td { background: #e6f4ff !important; }
+  #list tr[data-tid] { cursor: pointer; }
+  #list tr[data-tid]:hover td { background: #f5faff; }
+  #list tr.sel:hover td { background: #d6ecff !important; }
+  .selbar { padding: 0 22px; font-size: 12px; color: #ad6800;
+            background: #fffbe6; border-top: 1px solid #ffe58f;
+            height: 30px; display: flex; align-items: center; }
+  .selbar:empty::before { content: "单击行可选中任务，此处显示选中合计";
+            color: #ddd; }
+  .selbar.off { background: transparent; border-top-color: transparent; }
+  .selbar b { font-variant-numeric: tabular-nums; }
+  .selbar .cancel { border: 1px solid #ffe58f; background: #fff; color: #ad6800;
+                    border-radius: 5px; font-size: 11px; padding: 1px 8px;
+                    cursor: pointer; margin-left: 10px; font-family: inherit; }
+
+  /* ---------------- 面板区块管理：合并图表 / 收纳 / 排序 / 调整高度 ---------------- */
+  .charts-row { display: flex; flex-direction: column; }
+  .charts-row.h { flex-direction: row; gap: 0 16px; }
+  .charts-row.h > .section { flex: 1; min-width: 0; }
+  .lay-btn { cursor: pointer; color: #999; border: 1px solid #e0e0e0; border-radius: 5px;
+             padding: 2px 5px; line-height: 1; display: inline-flex; align-items: center;
+             user-select: none; background: #fff; }
+  .lay-btn:hover { color: #1677ff; border-color: #1677ff; }
+  .lay-btn.on { color: #1677ff; border-color: #1677ff; background: #e6f4ff; }
+  .lay-btn svg { display: block; }
+  .lay-btn.on svg rect { fill: #1677ff; }
+  .lay-btn svg rect { fill: #999; }
+  h2.sec-head { display: flex; align-items: center; gap: 10px;
+                padding: 14px 22px 6px; margin: 0; }
+  h2.sec-head .sec-t { flex: 0 1 auto; }
+  h2.sec-head .sec-ctl { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  h2.sec-head .sec-ops { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+  .drag-handle { cursor: grab; color: #bbb; font-size: 14px; user-select: none;
+                 padding: 0 4px; line-height: 1; }
+  .drag-handle:hover { color: #1677ff; }
+  .drag-handle:active { cursor: grabbing; }
+  .fold-btn { cursor: pointer; color: #999; border: 1px solid #e0e0e0; border-radius: 5px;
+              font-size: 12px; line-height: 1; padding: 2px 8px; user-select: none;
+              background: #fff; font-family: inherit; }
+  .fold-btn:hover { color: #1677ff; border-color: #1677ff; }
+  .panel.collapsed .sec-body { display: none; }
+  .panel.dragging { opacity: .5; }
+  .resize-bar { height: 10px; cursor: row-resize; position: relative; margin: 2px 0 0; }
+  .resize-bar::after { content: ""; position: absolute; left: 22px; right: 22px; top: 4px;
+                       height: 2px; background: #e6e6e6; border-radius: 1px; }
+  .resize-bar:hover::after { background: #1677ff; }
+  #listSection.fixed { flex: 0 0 auto; }
+  /* 图表浮动提示框 */
+  .chart-tipbox { position: fixed; z-index: 9999; display: none; pointer-events: none;
+                  background: rgba(20,20,20,.92); color: #fff; font-size: 12px;
+                  padding: 6px 10px; border-radius: 6px; white-space: nowrap;
+                  box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Codex 用量信息</h1>
+  <div class="sub">数据来自本地 Codex 日志，每 5 秒自动刷新 · 最近更新 <b id="updated">--</b></div>
+
+  <div class="controls">
+    <div class="tabs" id="tabs">
+      <button data-m="day" class="on">日</button>
+      <button data-m="week">周</button>
+      <button data-m="month">月</button>
+      <button data-m="year">年</button>
+    </div>
+    <div class="nav">
+      <button id="prev">‹</button>
+      <span class="plabel" id="plabel">--</span>
+      <button id="next">›</button>
+      <input type="date" id="picker">
+    </div>
+    <button class="today-btn" id="todayBtn">回到今天</button>
+    <button class="today-btn" id="yiBtn" style="margin-left:auto" title="开启后，所有 Tokens 数字的亿位部分变色，方便一眼读出有几亿">亿位高亮：关</button>
+    <button class="today-btn" id="chartModeBtn" style="margin-left:8px" title="把 Token 消耗分布与 API 折线合并到同一张图，或分开显示">图表合并：关</button>
+  </div>
+
+  <div class="cards">
+    <div class="card"><div class="label">充值余额</div><div class="value" id="balance">--</div></div>
+    <div class="card"><div class="label">本周消费</div><div class="value" id="week_cost">--</div></div>
+    <div class="card accent"><div class="label" id="periodName">今日消费</div><div class="value" id="period_cost">--</div></div>
+    <div class="card"><div class="label" id="periodName4">今日 API</div><div class="value" id="today_api">--</div></div>
+    <div class="card"><div class="label" id="periodName3">平均单次</div><div class="value" id="period_avg">--</div></div>
+    <div class="card"><div class="label" id="periodName2">今日 Tokens</div><div class="value" id="period_tokens">--</div></div>
+    <div class="card green"><div class="label">每亿 Token 均价<span class="qbtn" id="priceQBtn" title="各时段官方标价 vs 我的均价 对比">?</span></div><div class="value" id="avg_per_yi">--</div></div>
+    <div class="card green"><div class="label">缓存命中率</div><div class="value" id="cache_rate">--</div></div>
+    <div class="card"><div class="label">累计消费</div><div class="value" id="total_cost">--</div></div>
+    <div class="card"><div class="label">累计 API</div><div class="value" id="total_api">--</div></div>
+    <div class="card"><div class="label">累计 Tokens</div><div class="value" id="total_tokens">--</div></div>
+  </div>
+
+  <div class="modal-mask" id="priceMask">
+    <div class="modal">
+      <h3>各时段官方标价 vs 我的均价（元 / 亿 Token）<button class="mclose" id="priceClose" title="关闭">✕</button></h3>
+      <div class="mdesc">
+        「我的均价」= 按真实账单校准的单价折算到每 1 亿 Token 的花费。<br>
+        「官方折算价」= deepseek-chat 各调价时段的官方单价（元/百万 Token），按你的历史
+        缓存命中 / 未命中 / 输出 结构加权，折算成每 1 亿 Token 的综合价。
+      </div>
+      <div class="legend">
+        <span><i></i>官方折算价</span>
+        <span><i class="mine"></i>我的均价（<b id="mineYiTxt">--</b> 元/亿）</span>
+      </div>
+      <div class="price-chart" id="priceChart"></div>
+      <div id="priceTable"></div>
+      <div class="msrc">
+        价格来源：DeepSeek 官方公告 —— 2024-08-02《硬盘缓存上线，价格再降一个数量级》命中 0.1/未命中 1/输出 2；
+        2024-12-26 V3 发布新价命中 0.5/未命中 2/输出 8（45 天优惠期后 2025-02-09 起执行，另有 00:30–08:30 错峰优惠 0.1/1/4）；
+        2025-08-21 V3.1 调价（2025-09-06 生效，取消错峰）命中 0.5/未命中 4/输出 12；
+        2025-09-29 V3.2-Exp 降价命中 0.2/未命中 2/输出 3，至今有效。2024-05 V2 时代无缓存计费，输入统一 1 元/输出 2 元。
+      </div>
+    </div>
+  </div>
+
+  <div class="charts-row" id="chartsRow">
+  <div class="section panel" id="secChart" data-pid="chart">
+    <h2 class="sec-head"><span class="sec-t">Token消耗分布<span class="tip" id="chartTip"></span></span>
+      <span class="sec-ops">
+        <span class="lay-btn" data-lay="v" title="图表上下排列">
+          <svg width="13" height="13" viewBox="0 0 13 13"><rect x="1.5" y="1" width="10" height="5" rx="1"></rect><rect x="1.5" y="7" width="10" height="5" rx="1"></rect></svg></span>
+        <span class="lay-btn" data-lay="h" title="图表左右排列">
+          <svg width="13" height="13" viewBox="0 0 13 13"><rect x="1" y="1.5" width="5.5" height="10" rx="1"></rect><rect x="6.5" y="1.5" width="5.5" height="10" rx="1"></rect></svg></span>
+        <span class="drag-handle" title="按住图表拖动，按方向换位">⠿</span><span class="fold-btn" title="收纳 / 展开">–</span>
+      </span></h2>
+    <div class="sec-body">
+      <div class="chart" id="chart"></div>
+      <div class="chart-tip" id="chartSub"></div>
+    </div>
+  </div>
+
+  <div class="section panel" id="secApiChart" data-pid="apichart">
+    <h2 class="sec-head"><span class="sec-t">API 调用次数<span class="tip" id="apiChartTip"></span></span>
+      <span class="sec-ops">
+        <span class="lay-btn" data-lay="v" title="图表上下排列">
+          <svg width="13" height="13" viewBox="0 0 13 13"><rect x="1.5" y="1" width="10" height="5" rx="1"></rect><rect x="1.5" y="7" width="10" height="5" rx="1"></rect></svg></span>
+        <span class="lay-btn" data-lay="h" title="图表左右排列">
+          <svg width="13" height="13" viewBox="0 0 13 13"><rect x="1" y="1.5" width="5.5" height="10" rx="1"></rect><rect x="6.5" y="1.5" width="5.5" height="10" rx="1"></rect></svg></span>
+        <span class="drag-handle" title="按住图表拖动，按方向换位">⠿</span><span class="fold-btn" title="收纳 / 展开">–</span>
+      </span></h2>
+    <div class="sec-body">
+      <div class="chart line" id="apiChart"></div>
+      <div class="chart-tip" id="apiChartSub"></div>
+    </div>
+  </div>
+  </div>
+
+  <div class="section panel" id="listSection" data-pid="list">
+    <h2 class="sec-head"><span id="listTitle">任务消耗明细<span class="tip">每个任务 = 你发的一条消息，正在运行的任务实时累计</span></span>
+      <span class="sec-ctl">
+      <select id="groupSel" title="按分组查看任务（跨全部日期）"><option value="">分组视图：关</option></select>
+      <input id="search" placeholder="搜索任务名称，查看消耗…"></span>
+      <span class="sec-ops"><span class="drag-handle" title="拖动调整顺序">⠿</span><span class="fold-btn" title="收纳 / 展开">–</span></span></h2>
+    <div class="sec-body">
+      <div class="selbar" id="selBar"></div>
+      <div class="list" id="list"><div class="loading">首次加载正在扫描日志，请稍候…</div></div>
+      <div class="resize-bar" id="listResize" title="上下拖动调整明细区高度，双击恢复默认"></div>
+    </div>
+  </div>
+</div>
+
+<script src="demo-data.js"></script>
+<script>
+function fmt(n) { return n == null ? "--" : n.toLocaleString("en-US"); }
+function fmtTokens(n) {
+  if (n == null) return "--";
+  if (n >= 1e8) return (n / 1e8).toFixed(2) + " 亿";
+  if (n >= 1e4) return (n / 1e4).toFixed(1) + " 万";
+  return n.toLocaleString("en-US");
+}
+function escapeHtml(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function escapeAttr(s) { return escapeHtml(s).replace(/"/g, "&quot;"); }
+
+/* ---------------- 面板设置：亿位高亮 / 图表合并 / 收纳 / 排序 / 明细高度 ---------------- */
+let hiYi = false;
+try { hiYi = localStorage.getItem("hiYi") === "1"; } catch (e) {}
+let chartMode = "split";          // split=分开两张图 / merge=合并到同一张图
+let chartLayout = "h";            // v=上下排列 / h=左右排列（默认左右：API 折线在左、Token 柱状在右）
+let panelOrder = ["apichart", "chart", "list"];  // 默认面板顺序：API 调用次数 → Token消耗分布 → 明细
+let collapsedMap = {};            // pid -> 是否收纳
+let taskH = null;                 // 明细区固定高度（px），null=自动填充
+
+/* ---------------- 网页版适配（python main.py --web 模式） ----------------
+   桌面版由 pywebview 注入 window.pywebview.api；网页版在浏览器里没有这个桥，
+   这里在 HTTP 环境下用 fetch 访问本地 HTTP 服务，接口签名与 pywebview 一致。 */
+if (location.protocol.indexOf("http") === 0 && (!window.pywebview || !window.pywebview.api)) {
+  window.pywebview = {
+    api: {
+      get_data: (date, mode) =>
+        fetch("/api/data?date=" + encodeURIComponent(date || "") +
+              "&mode=" + encodeURIComponent(mode || "day")).then(r => r.json()),
+      search_tasks: (kw) =>
+        fetch("/api/search?kw=" + encodeURIComponent(kw || "")).then(r => r.json()),
+      get_tasks_by_ids: (ids) =>
+        fetch("/api/tasks?ids=" + encodeURIComponent((ids || []).join(","))).then(r => r.json()),
+      get_settings: () =>
+        fetch("/api/settings").then(r => r.json()),
+      edit_task: (tid, label) =>
+        fetch("/api/edit_task", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tid: tid, label: label }) }).then(r => r.json()).then(x => x.ok === true),
+      merge_tasks: (parent, children) =>
+        fetch("/api/merge", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ parent: parent, children: children }) }).then(r => r.json()).then(x => x.ok === true),
+      set_setting: (key, value) =>
+        fetch("/api/setting", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key: key, value: value }) }).then(r => r.json()).then(x => x.ok === true)
+    }
+  };
+}
+
+/* 写入设置：localStorage 兜底 + 后端 settings.json（重启保持） */
+function saveSetting(key, val) {
+  try { localStorage.setItem("s_" + key, JSON.stringify(val)); } catch (e) {}
+  if (window.pywebview && pywebview.api && pywebview.api.set_setting) {
+    try { pywebview.api.set_setting(key, val); } catch (e) {}
+  }
+}
+
+/* 重启保持上次状态：webview 每次启动来源不同，localStorage 不可靠，以后端 settings.json 为准。
+   pywebview 桥要等 pywebviewready 事件才注入，读取必须挂在事件上。 */
+function applySettingsFromBackend() {
+  if (window.pywebview && pywebview.api && pywebview.api.get_settings) {
+    pywebview.api.get_settings().then(function (s) {
+      if (!s) return;
+      if (typeof s.hiYi === "boolean") { hiYi = s.hiYi; updateYiBtn(); if (lastData) render(lastData); }
+      if (s.chart_mode) {
+        chartMode = s.chart_mode === "merge" ? "merge" : "split";
+        updateChartModeBtn(); applyChartMode();
+        if (lastData) render(lastData);
+      }
+      if (s.chart_layout) {
+        chartLayout = s.chart_layout === "h" ? "h" : "v";
+        updateLayBtns(); applyChartLayout();
+      }
+      if (Array.isArray(s.panel_order)) { panelOrder = s.panel_order; applyOrder(); }
+      if (s.panel_collapsed && typeof s.panel_collapsed === "object") {
+        collapsedMap = s.panel_collapsed; applyCollapsed();
+      }
+      if (s.task_h) { taskH = parseInt(s.task_h, 10); applyTaskH(); }
+    }).catch(function () {});
+  }
+}
+if (window.pywebview && pywebview.api) applySettingsFromBackend();
+window.addEventListener("pywebviewready", applySettingsFromBackend);
+
+function updateYiBtn() {
+  const b = document.getElementById("yiBtn");
+  b.textContent = "亿位高亮：" + (hiYi ? "开" : "关");
+  b.classList.toggle("on", hiYi);
+}
+document.getElementById("yiBtn").onclick = () => {
+  hiYi = !hiYi;
+  try { localStorage.setItem("hiYi", hiYi ? "1" : "0"); } catch (e) {}
+  saveSetting("hiYi", hiYi);
+  updateYiBtn();
+  if (lastData) render(lastData);
+};
+
+/* ---------------- 图表合并开关 ---------------- */
+function updateChartModeBtn() {
+  const b = document.getElementById("chartModeBtn");
+  b.textContent = "图表合并：" + (chartMode === "merge" ? "开" : "关");
+  b.classList.toggle("on", chartMode === "merge");
+}
+function applyChartMode() {
+  const secApi = document.getElementById("secApiChart");
+  const merged = chartMode === "merge";
+  secApi.style.display = merged ? "none" : "";
+  /* 合并模式只有一张图，布局按钮无意义，隐藏 */
+  document.querySelectorAll(".lay-btn").forEach(b => { b.style.display = merged ? "none" : ""; });
+}
+document.getElementById("chartModeBtn").onclick = () => {
+  chartMode = chartMode === "merge" ? "split" : "merge";
+  saveSetting("chart_mode", chartMode);
+  updateChartModeBtn();
+  applyChartMode();
+  if (lastData) render(lastData);
+};
+
+/* ---------------- 图表左右 / 上下布局 ---------------- */
+function updateLayBtns() {
+  document.querySelectorAll(".lay-btn").forEach(b =>
+    b.classList.toggle("on", b.dataset.lay === chartLayout));
+}
+function applyChartLayout() {
+  document.getElementById("chartsRow").classList.toggle("h", chartLayout === "h");
+}
+document.querySelectorAll(".lay-btn").forEach(b =>
+  b.onclick = () => setChartLayout(b.dataset.lay));
+function setChartLayout(v) {
+  if (v === chartLayout) return;
+  chartLayout = v;
+  saveSetting("chart_layout", chartLayout);
+  updateLayBtns();
+  applyChartLayout();
+  if (lastData) render(lastData);
+}
+
+/* ---------------- 区块收纳 / 展开 ---------------- */
+function updateFoldBtns() {
+  document.querySelectorAll(".fold-btn").forEach(b => {
+    const pid = b.closest(".panel").dataset.pid;
+    b.textContent = collapsedMap[pid] ? "＋" : "–";
+    b.title = collapsedMap[pid] ? "展开" : "收纳 / 展开";
+  });
+}
+function applyCollapsed() {
+  document.querySelectorAll(".panel").forEach(p => {
+    p.classList.toggle("collapsed", !!collapsedMap[p.dataset.pid]);
+  });
+  updateFoldBtns();
+}
+function initPanelOps() {
+  document.querySelectorAll(".fold-btn").forEach(b => {
+    b.onclick = () => {
+      const pid = b.closest(".panel").dataset.pid;
+      collapsedMap[pid] = !collapsedMap[pid];
+      saveSetting("panel_collapsed", collapsedMap);
+      applyCollapsed();
+    };
+  });
+}
+
+/* ---------------- 区块拖拽排序（两个图表在 chartsRow 内，明细区单独一行） ---------------- */
+function chartsRowEl() { return document.getElementById("chartsRow"); }
+function currentPanelOrder() {
+  const row = chartsRowEl(), list = document.getElementById("listSection");
+  const chartPids = [...row.querySelectorAll(".panel")].map(p => p.dataset.pid);
+  const rowFirst = row.compareDocumentPosition(list) & 4;  // 4 = FOLLOWING：row 在 list 之前
+  return rowFirst ? chartPids.concat("list") : ["list"].concat(chartPids);
+}
+function applyOrder() {
+  const wrap = document.querySelector(".wrap");
+  const row = chartsRowEl(), list = document.getElementById("listSection");
+  const ids = panelOrder || [];
+  /* 1) 图表行内顺序 */
+  const chartOrder = ids.filter(pid => pid === "chart" || pid === "apichart");
+  let prev = null;
+  for (const pid of chartOrder) {
+    const p = row.querySelector(".panel[data-pid='" + pid + "']");
+    if (!p) continue;
+    if (prev) row.insertBefore(p, prev.nextElementSibling);
+    else row.insertBefore(p, row.firstElementChild);
+    prev = p;
+  }
+  /* 2) 图表行 与 明细区 的上下顺序 */
+  const listIdx = ids.indexOf("list");
+  const firstChartIdx = ids.findIndex(pid => pid === "chart" || pid === "apichart");
+  const listFirst = listIdx !== -1 && (firstChartIdx === -1 || listIdx < firstChartIdx);
+  if (listFirst) wrap.insertBefore(list, row);
+  else wrap.insertBefore(row, list);
+}
+function initPanelDrag() {
+  const wrap = document.querySelector(".wrap");
+  const CHART_IDS = new Set(["chart", "apichart"]);
+  let dragSec = null, startX = 0, startY = 0, axis = "y";
+  document.addEventListener("mousedown", e => {
+    if (e.button !== 0) return;
+    const sec = e.target.closest(".panel");
+    if (!sec) return;
+    const pid = sec.dataset.pid;
+    if (CHART_IDS.has(pid)) {
+      /* 图表：整个区域可拖，松开时按拖动方向换位（左右布局看左右，上下布局看上下） */
+      if (e.target.closest(".lay-btn,.fold-btn,input,select,button,.inline-edit")) return;
+      dragSec = sec;
+      startX = e.clientX; startY = e.clientY;
+      axis = chartsRowEl().classList.contains("h") ? "x" : "y";
+      dragSec.classList.add("dragging");
+      document.body.style.userSelect = "none";
+      e.preventDefault();
+    } else if (pid === "list") {
+      /* 明细区：只能拖标题上的手柄，与图表行上下换位 */
+      const h = e.target.closest(".drag-handle");
+      if (!h) return;
+      dragSec = sec;
+      startX = e.clientX; startY = e.clientY;
+      dragSec.classList.add("dragging");
+      document.body.style.userSelect = "none";
+      e.preventDefault();
+    }
+  });
+  document.addEventListener("mousemove", e => {
+    if (!dragSec) return;
+    if (CHART_IDS.has(dragSec.dataset.pid)) return;  // 图表在松开时按方向判定
+    /* 明细区手柄：与图表行上下换位 */
+    const row = chartsRowEl(), list = dragSec;
+    const rr = row.getBoundingClientRect();
+    if (e.clientY < rr.top + rr.height / 2) {
+      if (list.previousElementSibling !== row) wrap.insertBefore(list, row);
+    } else if (e.clientY < rr.bottom) {
+      if (row.nextElementSibling !== list) wrap.insertBefore(row, list.nextElementSibling);
+    }
+  });
+  document.addEventListener("mouseup", e => {
+    if (!dragSec) return;
+    if (CHART_IDS.has(dragSec.dataset.pid)) {
+      const d = axis === "x" ? e.clientX - startX : e.clientY - startY;
+      if (Math.abs(d) >= 30) {
+        const row = chartsRowEl();
+        const siblings = [...row.querySelectorAll(".panel")].filter(p => p.style.display !== "none");
+        const idx = siblings.indexOf(dragSec);
+        if (d > 0 && idx < siblings.length - 1) row.insertBefore(dragSec, siblings[idx + 1].nextElementSibling);
+        else if (d < 0 && idx > 0) row.insertBefore(dragSec, siblings[idx - 1]);
+      }
+    }
+    dragSec.classList.remove("dragging");
+    document.body.style.userSelect = "";
+    dragSec = null;
+    saveSetting("panel_order", currentPanelOrder());
+  });
+}
+
+/* ---------------- 明细区高度调整 ---------------- */
+function applyTaskH() {
+  const sec = document.getElementById("listSection");
+  if (!taskH) return;
+  const top = sec.getBoundingClientRect().top;
+  const maxH = Math.max(180, window.innerHeight - 56 - top);
+  const h = Math.max(180, Math.min(maxH, taskH));
+  sec.classList.add("fixed");
+  sec.style.height = h + "px";
+}
+function initListResize() {
+  const bar = document.getElementById("listResize");
+  const sec = document.getElementById("listSection");
+  let dragging = false, startY = 0, startH = 0;
+  bar.addEventListener("mousedown", e => {
+    dragging = true;
+    startY = e.clientY;
+    startH = sec.classList.contains("fixed") ? parseInt(sec.style.height, 10) : sec.offsetHeight;
+    e.preventDefault();
+    document.body.style.userSelect = "none";
+  });
+  document.addEventListener("mousemove", e => {
+    if (!dragging) return;
+    const top = sec.getBoundingClientRect().top;
+    const maxH = Math.max(180, window.innerHeight - 56 - top);
+    let h = Math.max(180, Math.min(maxH, startH + (e.clientY - startY)));
+    sec.classList.add("fixed");
+    sec.style.height = h + "px";
+  });
+  document.addEventListener("mouseup", () => {
+    if (!dragging) return;
+    dragging = false;
+    document.body.style.userSelect = "";
+    const h = sec.style.height;
+    if (h) saveSetting("task_h", parseInt(h, 10));
+  });
+  bar.addEventListener("dblclick", () => {
+    sec.classList.remove("fixed");
+    sec.style.height = "";
+    taskH = null;
+    saveSetting("task_h", null);
+  });
+}
+
+/* token 数字格式化：开启高亮后，≥1 亿的数字其亿位段（从右数第 9 位起往左）变色 */
+function fmtT(n) {
+  if (n == null) return "--";
+  const s = n.toLocaleString("en-US");
+  if (!hiYi || n < 1e8) return s;
+  const headLen = s.replace(/,/g, "").length - 8;
+  let cnt = 0, idx = 0;
+  while (idx < s.length && cnt < headLen) {
+    if (s[idx] !== ",") cnt++;
+    idx++;
+  }
+  return '<span class="yi">' + s.slice(0, idx) + '</span>' + s.slice(idx);
+}
+
+const MODE_NAME = { day: "今日", week: "本周", month: "本月", year: "今年" };
+const state = { mode: "day", date: new Date().toISOString().slice(0, 10) };
+let lastData = null;          // 最近一次 get_data 的结果（排序时重渲染用）
+let searchKw = "";            // 当前搜索关键词（空 = 不搜索）
+let searchRows = null;        // 搜索结果缓存（null = 尚未返回）
+let pendingLocate = null;     // 定位目标任务 id，渲染后滚动高亮
+const selected = new Set();   // 已选中任务的 tid 集合（跨 5 秒刷新保持）
+const expanded = new Set();   // 已展开子任务的父任务 tid 集合
+let collapsedDays = {};       // 周/月/年分组视图：已收纳的天（key=YYYY-MM-DD -> true）
+let lastTaskRows = [];        // 最近一次渲染的任务行（算选中合计用）
+let onlySel = false;          // 仅查看选中任务
+let viewGroup = null;         // 当前查看的分组 {name, tids:Set}，null=关
+let groupRows = null;         // 分组任务数据缓存
+const sortState = { key: null, dir: 1 };  // dir: 1 升序 / -1 降序
+let editingInput = null;                  // 正在原地改名的 input 元素
+let editingTid = null;                    // 正在原地改名的任务 tid
+
+function iso(d) {
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") +
+         "-" + String(d.getDate()).padStart(2, "0");
+}
+function shift(dir) {
+  const d = new Date(state.date + "T00:00:00");
+  if (state.mode === "day") d.setDate(d.getDate() + dir);
+  else if (state.mode === "week") d.setDate(d.getDate() + dir * 7);
+  else if (state.mode === "month") d.setMonth(d.getMonth() + dir);
+  else d.setFullYear(d.getFullYear() + dir);
+  state.date = iso(d);
+  clearSelection();
+  refresh();
+}
+document.getElementById("prev").onclick = () => shift(-1);
+document.getElementById("next").onclick = () => shift(1);
+document.getElementById("todayBtn").onclick = () => {
+  state.date = iso(new Date());
+  clearSelection();
+  refresh();
+};
+updateYiBtn();
+document.getElementById("picker").onchange = (e) => {
+  if (e.target.value) { state.date = e.target.value; clearSelection(); refresh(); }
+};
+document.getElementById("tabs").addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  document.querySelectorAll("#tabs button").forEach(x => x.classList.remove("on"));
+  b.classList.add("on");
+  state.mode = b.dataset.m;
+  clearSelection();
+  refresh();
+});
+
+/* ---------------- 搜索 ---------------- */
+let searchTimer = null;
+document.getElementById("search").oninput = (e) => {
+  clearTimeout(searchTimer);
+  const kw = e.target.value.trim();
+  searchTimer = setTimeout(() => {
+    searchKw = kw;
+    searchRows = null;
+    clearSelection();
+    if (kw) runSearch(); else renderList();
+  }, 350);
+};
+function runSearch() {
+  if (window.pywebview && window.pywebview.api) {
+    window.pywebview.api.search_tasks(searchKw).then(rows => {
+      searchRows = rows || [];
+      renderList();
+    });
+  }
+}
+
+/* ---------------- 列宽记忆 ---------------- */
+function getColW(tid, def) {
+  try {
+    const v = JSON.parse(localStorage.getItem("colw_" + tid));
+    if (Array.isArray(v) && v.length === def.length) return v;
+  } catch (e) {}
+  return def.slice();
+}
+function saveColW(tid, arr) {
+  try { localStorage.setItem("colw_" + tid, JSON.stringify(arr)); } catch (e) {}
+}
+
+/* ---------------- 表格构建（排序 + 拖宽） ---------------- */
+function buildTable(tid, cols, bodyHtml) {
+  const ws = getColW(tid, cols.map(c => c.w));
+  let html = '<table><colgroup>';
+  for (const w of ws) html += '<col' + (w ? ' style="width:' + w + 'px"' : '') + '>';
+  html += '</colgroup><tr>';
+  cols.forEach((c, i) => {
+    const arrow = (c.key && sortState.key === c.key)
+      ? (sortState.dir === 1 ? '▲' : '▼') : '';
+    html += '<th class="' + (c.cls || '') + (c.key ? ' sortable' : '') + '"' +
+            (c.key ? ' data-k="' + c.key + '"' : '') + '>' + c.label +
+            ' <span class="arr">' + arrow + '</span>' +
+            '<span class="drag" data-i="' + i + '"></span></th>';
+  });
+  return html + '</tr>' + bodyHtml + '</table>';
+}
+
+function bindTable(listEl, tid) {
+  // 点击表头排序：新列按内容类型给默认方向，再点同一列切换升/降
+  listEl.querySelectorAll("th.sortable").forEach(th => {
+    th.onclick = (e) => {
+      if (e.target.classList.contains("drag")) return;
+      const k = th.dataset.k;
+      if (sortState.key === k) {
+        sortState.dir *= -1;
+      } else {
+        sortState.key = k;
+        sortState.dir = (k === "tokens" || k === "cost" || k === "rate") ? -1 : 1;
+      }
+      renderList();
+    };
+  });
+  // 拖动表头右缘调列宽，松手后保存
+  listEl.querySelectorAll("th .drag").forEach(dg => {
+    dg.onmousedown = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const i = +dg.dataset.i;
+      const cols = listEl.querySelectorAll("col");
+      const startX = e.clientX;
+      const startW = dg.parentElement.offsetWidth;
+      const move = (ev) => {
+        ev.preventDefault();
+        const w = Math.max(50, startW + ev.clientX - startX);
+        cols[i].style.width = w + "px";
+      };
+      const up = () => {
+        document.removeEventListener("mousemove", move);
+        document.removeEventListener("mouseup", up);
+        const ws = Array.from(cols).map(c => {
+          const m = /(\d+)/.exec(c.style.width || "");
+          return m ? +m[1] : null;
+        });
+        saveColW(tid, ws);
+      };
+      document.addEventListener("mousemove", move);
+      document.addEventListener("mouseup", up);
+    };
+  });
+  // 行内"定位"按钮
+  listEl.querySelectorAll(".opbtn").forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const tid = btn.dataset.tid;
+      if (btn.dataset.act === "loc") {
+        pendingLocate = tid;
+        if (searchKw) {
+          // 搜索结果：跳到该任务所在日期的日视图
+          const d = btn.dataset.date;
+          searchKw = ""; searchRows = null;
+          document.getElementById("search").value = "";
+          if (d) {
+            state.date = d; state.mode = "day";
+            document.querySelectorAll("#tabs button").forEach(x =>
+              x.classList.toggle("on", x.dataset.m === "day"));
+          }
+          sortState.key = null;
+          refresh();
+        } else {
+          // 本日/周/月/年列表：清掉排序恢复原始（分组）顺序，展开所有天组，重渲染后高亮
+          sortState.key = null;
+          collapsedDays = {};
+          renderList();
+        }
+      }
+    };
+  });
+  // 合并任务的展开/收起三角
+  listEl.querySelectorAll(".tri").forEach(tri => {
+    tri.onclick = (e) => {
+      e.stopPropagation();
+      const id = tri.dataset.tid;
+      if (expanded.has(id)) expanded.delete(id); else expanded.add(id);
+      renderList();
+    };
+  });
+  // 任务行：单击选中/取消（整行高亮），双击直接改名，拖拽合并到其他任务
+  listEl.querySelectorAll("tr[data-tid]").forEach(tr => {
+    tr.draggable = true;
+    tr.ondragstart = (e) => {
+      e.dataTransfer.setData("text/plain", tr.dataset.tid);
+      e.dataTransfer.effectAllowed = "move";
+    };
+    tr.ondragover = (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      tr.classList.add("drop");
+    };
+    tr.ondragleave = () => tr.classList.remove("drop");
+    tr.ondrop = (e) => {
+      e.preventDefault();
+      tr.classList.remove("drop");
+      const target = tr.dataset.tid;
+      const dragTid = e.dataTransfer.getData("text/plain");
+      if (!target || !dragTid || dragTid === target) return;
+      // 拖的是已选中行且多选 → 整批并入；否则只并入拖的这一行
+      const srcs = (selected.has(dragTid) && selected.size > 1)
+        ? Array.from(selected).filter(t => t !== target) : [dragTid];
+      if (!srcs.length || !window.pywebview || !window.pywebview.api) return;
+      window.pywebview.api.merge_tasks(target, srcs).then(ok => {
+        if (ok) {
+          srcs.forEach(s => selected.delete(s));
+          refresh();
+        }
+      });
+    };
+    tr.onclick = (e) => {
+      if (e.target.classList.contains("opbtn")) return;
+      const tid = tr.dataset.tid;
+      if (!tid) return;
+      if (selected.has(tid)) { selected.delete(tid); tr.classList.remove("sel"); }
+      else { selected.add(tid); tr.classList.add("sel"); }
+      updateSelBar();
+    };
+    tr.ondblclick = (e) => {
+      if (e.target.classList.contains("opbtn")) return;
+      const tid = tr.dataset.tid;
+      const cur = tr.dataset.label || "";
+      if (!tid) return;
+      startInlineEdit(tr, tid, cur);
+    };
+  });
+}
+
+/* ---------------- 原地改名：双击任务行，直接在名称单元格里改 ---------------- */
+function startInlineEdit(tr, tid, cur) {
+  if (editingInput) return;                     // 一次只改一个
+  const cell = tr.querySelector("td.label");
+  if (!cell) return;
+  const input = document.createElement("input");
+  input.className = "inline-edit";
+  input.value = cur;
+  cell.innerHTML = "";
+  cell.appendChild(input);
+  editingInput = input;
+  editingTid = tid;
+  input.focus();
+  input.select();
+  let done = false;
+  const commit = (save) => {
+    if (done) return;
+    done = true;
+    editingInput = null; editingTid = null;
+    const v = input.value.trim();
+    if (save && v && v !== cur && window.pywebview && window.pywebview.api) {
+      window.pywebview.api.edit_task(tid, v).then(ok => { if (ok) refresh(); else renderList(); });
+    } else {
+      renderList();
+    }
+  };
+  input.onkeydown = (ev) => {
+    ev.stopPropagation();
+    if (ev.key === "Enter") commit(true);
+    else if (ev.key === "Escape") commit(false);
+  };
+  input.onblur = () => commit(true);            // 失焦保存
+  input.onclick = (ev) => ev.stopPropagation(); // 编辑时不触发行的选中
+  input.ondblclick = (ev) => ev.stopPropagation();
+  input.ondragstart = (ev) => ev.preventDefault();
+}
+
+/* 选中合计栏：固定在表格顶部，只统计当前列表中可见的已选任务 */
+function updateSelBar() {
+  const bar = document.getElementById("selBar");
+  const rows = lastTaskRows.filter(r => r.id && selected.has(r.id));
+  if (!rows.length && !onlySel) {
+    bar.innerHTML = "";          // 占位高度不变，避免表格跳动
+    bar.classList.add("off");
+    return;
+  }
+  bar.classList.remove("off");
+  const tok = rows.reduce((s, r) => s + r.tokens, 0);
+  const cost = rows.reduce((s, r) => s + r.cost, 0);
+  bar.innerHTML = '已选中 <b>' + rows.length + '</b> 个任务 · 合计 <b>' +
+    fmt(tok) + '</b> tokens · <b>¥' + cost.toFixed(3) + '</b>' +
+    '<button class="sbtn' + (onlySel ? ' on' : '') + '" data-a="only">' +
+    (onlySel ? '查看全部' : '仅查看选中') + '</button>' +
+    '<button class="sbtn" data-a="grp">加入分组</button>' +
+    '<button class="cancel">取消选择</button>';
+  bar.querySelector('[data-a="only"]').onclick = () => { onlySel = !onlySel; renderList(); };
+  bar.querySelector('[data-a="grp"]').onclick = addSelToGroup;
+  bar.querySelector(".cancel").onclick = () => {
+    selected.clear(); onlySel = false; renderList();
+  };
+}
+function clearSelection() {
+  selected.clear();
+  onlySel = false;
+  updateSelBar();
+}
+
+/* ---------------- 任务分组（localStorage 持久化：{组名:[tid,...]}） ---------------- */
+function loadGroups() {
+  try { return JSON.parse(localStorage.getItem("taskGroups")) || {}; }
+  catch (e) { return {}; }
+}
+function saveGroups(g) {
+  try { localStorage.setItem("taskGroups", JSON.stringify(g)); } catch (e) {}
+}
+function refreshGroupSel() {
+  const g = loadGroups();
+  const sel = document.getElementById("groupSel");
+  sel.innerHTML = '<option value="">分组视图：关</option>' +
+    Object.keys(g).map(n => '<option>' + escapeHtml(n) + '</option>').join('');
+  if (viewGroup) sel.value = viewGroup.name;
+}
+function addSelToGroup() {
+  if (!selected.size) return;
+  const g = loadGroups();
+  const name = prompt("加入分组（输入组名；同名则追加）：",
+    viewGroup ? viewGroup.name : "");
+  if (!name || !name.trim()) return;
+  const n = name.trim();
+  const arr = new Set(g[n] || []);
+  selected.forEach(t => arr.add(t));
+  g[n] = Array.from(arr);
+  saveGroups(g);
+  refreshGroupSel();
+  if (viewGroup && viewGroup.name === n) {  // 正在看该组：刷新成员
+    viewGroup.tids = new Set(g[n]);
+    loadGroupRows();
+  }
+}
+function loadGroupRows() {
+  if (!viewGroup) return;
+  if (window.pywebview && window.pywebview.api) {
+    window.pywebview.api.get_tasks_by_ids(Array.from(viewGroup.tids)).then(rows => {
+      groupRows = rows || [];
+      renderList();
+    });
+  }
+}
+document.getElementById("groupSel").onchange = (e) => {
+  const n = e.target.value;
+  if (!n) { viewGroup = null; groupRows = null; renderList(); return; }
+  const g = loadGroups();
+  viewGroup = { name: n, tids: new Set(g[n] || []) };
+  groupRows = null;
+  clearSelection();
+  loadGroupRows();
+  renderList();
+};
+refreshGroupSel();
+
+/* 渲染完成后：若存在定位目标，滚动到该行并短暂高亮 */
+function flashPending() {
+  if (!pendingLocate) return;
+  const tid = pendingLocate;
+  pendingLocate = null;
+  const sel = '#list [data-tid="' + (window.CSS && CSS.escape ? CSS.escape(tid) : tid) + '"]';
+  const btn = document.querySelector(sel);
+  if (!btn) return;
+  const tr = btn.closest("tr");
+  tr.classList.add("flash");
+  tr.scrollIntoView({ block: "center" });
+  setTimeout(() => tr.classList.remove("flash"), 2600);
+}
+
+function sortRows(rows, km) {
+  if (!sortState.key || !km[sortState.key]) return rows;
+  const get = km[sortState.key];
+  return rows.slice().sort((a, b) => {
+    const x = get(a), y = get(b);
+    if (x < y) return -1 * sortState.dir;
+    if (x > y) return 1 * sortState.dir;
+    return 0;
+  });
+}
+
+function taskRowHtml(t) {
+  // 排序或搜索状态下提供"定位"：恢复时间顺序并滚动高亮该任务
+  const loc = (sortState.key || searchKw)
+    ? '<button class="opbtn" data-act="loc" data-tid="' + escapeAttr(t.id || "") +
+      '" data-date="' + escapeAttr(t.date || "") + '">定位</button>' : '';
+  const tid = t.id || "";
+  const cls = (t.live ? "live" : "") + (selected.has(tid) ? (t.live ? " sel" : "sel") : "");
+  const tri = t.kids
+    ? '<span class="tri" data-tid="' + escapeAttr(tid) + '" title="展开/收起子任务">' +
+      (expanded.has(tid) ? '▼' : '▶') + '</span>' : '';
+  return '<tr data-tid="' + escapeAttr(tid) + '" data-label="' + escapeAttr(t.label) + '"' +
+      (cls ? ' class="' + cls + '"' : '') + '>' +
+    '<td class="time">' + tri + t.time + '</td>' +
+    '<td class="label" title="' + escapeAttr(t.label) + '">' + escapeHtml(t.label) +
+      (t.kids ? '<span class="badge" title="含 ' + t.kids + '个并入的子任务">⊕' +
+        t.kids + '</span>' : '') +
+      (t.live ? '<span class="badge">进行中</span>' : '') + '</td>' +
+    '<td class="num">' + fmtT(t.tokens) + '</td>' +
+    '<td class="cost">¥' + t.cost.toFixed(3) + '</td>' +
+    '<td class="ops">' + loc + '</td></tr>';
+}
+const TASK_KM = { t: r => r.time, label: r => r.label.toLowerCase(),
+                  tokens: r => r.tokens, cost: r => r.cost };
+
+/* 展开的子任务行（缩进灰底，只读展示） */
+function kidRowHtml(c) {
+  return '<tr class="kidrow"><td class="time">' + c.time + '</td>' +
+    '<td class="label" title="' + escapeAttr(c.label) + '">└ ' + escapeHtml(c.label) + '</td>' +
+    '<td class="num">' + fmtT(c.tokens) + '</td>' +
+    '<td class="cost">¥' + c.cost.toFixed(3) + '</td><td class="ops"></td></tr>';
+}
+/* 父任务行 + （若展开）子任务行 */
+function taskWithKidsHtml(t) {
+  let h = taskRowHtml(t);
+  if (t.kids && expanded.has(t.id) && t.children) {
+    for (const c of t.children) h += kidRowHtml(c);
+  }
+  return h;
+}
+
+/* ---------------- 图表浮动提示框（WebView 里 SVG <title> 不显示，用 HTML 提示框替代） ---------------- */
+function getChartTip() {
+  let tip = document.getElementById("chartTipBox");
+  if (!tip) {
+    tip = document.createElement("div");
+    tip.id = "chartTipBox";
+    tip.className = "chart-tipbox";
+    document.body.appendChild(tip);
+  }
+  return tip;
+}
+function showChartTip(e, svg, points) {
+  const tip = getChartTip();
+  const r = svg.getBoundingClientRect();
+  const x = e.clientX - r.left, y = e.clientY - r.top;
+  let best = -1, bd = 1e18;
+  for (let i = 0; i < points.length; i++) {
+    const dx = points[i].x - x;
+    const dy = (points[i].y - y) * 1.6;
+    const d = dx * dx + dy * dy;
+    if (d < bd) { bd = d; best = i; }
+  }
+  if (best < 0) return;
+  const p = points[best];
+  tip.textContent = p.text;
+  tip.style.display = "block";
+  let tx = r.left + p.x - tip.offsetWidth / 2;
+  let ty = r.top + p.y - 30;
+  if (ty < 6) ty = r.top + p.y + 14;
+  tx = Math.max(6, Math.min(window.innerWidth - tip.offsetWidth - 6, tx));
+  tip.style.left = tx + "px";
+  tip.style.top = ty + "px";
+}
+function bindHover(el) {
+  const svg = el.querySelector("svg");
+  if (!svg || !el.__points || !el.__points.length) return;
+  const tip = getChartTip();
+  svg.addEventListener("mousemove", e => showChartTip(e, svg, el.__points));
+  svg.addEventListener("mouseleave", () => { tip.style.display = "none"; });
+}
+
+function renderChart(chart) {
+  const max = Math.max(...chart.map(c => c.tokens), 1);
+  const n = chart.length;
+  let html = "";
+  chart.forEach((c, i) => {
+    const h = Math.max(2, Math.round(c.tokens / max * 150));
+    let x = c.label;
+    if (n > 12 && n <= 31) x = (i % Math.ceil(n / 10) === 0 || i === n - 1) ? c.label : "";
+    else if (n > 31) x = c.label;
+    else if (n === 24) x = (i % 3 === 0) ? c.label : "";
+    html += '<div class="col' + (c.tokens === 0 ? ' dim' : '') + '" title="' +
+      c.label + '：' + fmt(c.tokens) + ' tokens（¥' + c.cost.toFixed(3) + '）">' +
+      '<div class="v">' + fmtTokens(c.tokens) + '</div>' +
+      '<div class="bar" style="height:' + h + 'px"></div>' +
+      '<div class="x">' + x + '</div></div>';
+  });
+  document.getElementById("chart").innerHTML = html;
+}
+
+/* ---------------- API 调用次数折线图 ---------------- */
+function renderApiChart(apiChart) {
+  const el = document.getElementById("apiChart");
+  if (!apiChart || !apiChart.length) {
+    el.innerHTML = '<div class="empty" style="padding:0 22px;color:#999;font-size:12px">暂无数据</div>';
+    return;
+  }
+  const n = apiChart.length;
+  const max = Math.max(...apiChart.map(c => c.api), 1);
+  let labels = "";
+  apiChart.forEach((c, i) => {
+    let x = c.label;
+    if (n > 12 && n <= 31) x = (i % Math.ceil(n / 10) === 0 || i === n - 1) ? c.label : "";
+    else if (n > 31) x = c.label;
+    else if (n === 24) x = (i % 3 === 0) ? c.label : "";
+    labels += '<span>' + x + '</span>';
+  });
+  el.innerHTML = '<div class="line-svg"></div><div class="line-labels">' + labels + '</div>';
+  /* 先渲染占位再量取真实像素尺寸，保证圆点不因拉伸变形 */
+  const box = el.querySelector(".line-svg");
+  const r = box.getBoundingClientRect();
+  const W = Math.max(300, r.width), H = Math.max(100, r.height);
+  const PAD = 26, TOP = 16;
+  const innerW = W - PAD * 2, innerH = H - TOP - 18;
+  let xs = [], ys = [], pts = "";
+  apiChart.forEach((c, i) => {
+    const x = PAD + (n === 1 ? innerW / 2 : i * innerW / (n - 1));
+    const y = TOP + innerH - (c.api / max) * innerH;
+    xs.push(x); ys.push(y);
+    pts += (i ? " L" : "M") + x.toFixed(1) + " " + y.toFixed(1);
+  });
+  const area = pts + " L" + xs[n - 1].toFixed(1) + " " + (TOP + innerH) +
+               " L" + xs[0].toFixed(1) + " " + (TOP + innerH) + " Z";
+  let dots = "";
+  apiChart.forEach((c, i) => {
+    dots += '<circle class="api-dot" cx="' + xs[i].toFixed(1) + '" cy="' + ys[i].toFixed(1) +
+            '" r="4"><title>' + c.label + '：' + fmt(c.api) + ' 次</title></circle>';
+  });
+  box.innerHTML =
+    '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">' +
+    '<path class="api-area" d="' + area + '"></path>' +
+    '<path class="api-line" d="' + pts + '"></path>' + dots + '</svg>';
+  el.__points = apiChart.map((c, i) => ({
+    x: xs[i], y: ys[i], text: escapeHtml(c.label) + "：" + fmt(c.api) + " 次"
+  }));
+  bindHover(el);
+}
+
+/* ---------------- 每亿 Token 均价：各时段官方标价对比弹窗 ---------------- */
+const PRICE_ERAS = [
+  { name: "V2 时代", short: "V2", range: "2024-05 ~ 2024-08-01",
+    hit: 1, miss: 1, out: 2, note: "无缓存计费，输入统一 1 元" },
+  { name: "V2.5 硬盘缓存", short: "V2.5", range: "2024-08-02 ~ 2025-02-08",
+    hit: 0.1, miss: 1, out: 2, note: "缓存命中 0.1" },
+  { name: "V3 标准时段", short: "V3标准", range: "2025-02-09 ~ 2025-09-05",
+    hit: 0.5, miss: 2, out: 8, note: "08:30–00:30" },
+  { name: "V3 错峰时段", short: "V3错峰", range: "同期 00:30–08:30",
+    hit: 0.1, miss: 1, out: 4, note: "夜间优惠价" },
+  { name: "V3.1", short: "V3.1", range: "2025-09-06 ~ 2025-09-28",
+    hit: 0.5, miss: 4, out: 12, note: "取消错峰优惠" },
+  { name: "V3.2 现行", short: "V3.2现行", range: "2025-09-29 至今",
+    hit: 0.2, miss: 2, out: 3, note: "全天统一价" }
+];
+function eraBlend(era, mix) {
+  /* 按全历史 缓存命中/未命中/输出 结构加权，返回 元/亿 Token；无用量返回 null */
+  const tot = mix.i + mix.o;
+  if (!tot) return null;
+  return (mix.c * era.hit + (mix.i - mix.c) * era.miss + mix.o * era.out) / tot * 100;
+}
+function renderPriceModal() {
+  const d = lastData || {};
+  const mix = { i: d.total_in || 0, c: d.total_cached || 0, o: d.total_out || 0 };
+  const mine = d.avg_per_yi != null ? d.avg_per_yi : null;
+  document.getElementById("mineYiTxt").textContent = mine != null ? mine.toFixed(2) : "--";
+  let rows = "";
+  for (const er of PRICE_ERAS) {
+    const b = eraBlend(er, mix);
+    const pct = (b != null && mine != null && b > 0) ? mine / b * 100 : null;
+    rows += '<tr><td><b>' + escapeHtml(er.name) + '</b><span class="tip">' + er.note + '</span></td>' +
+      '<td class="time">' + er.range + '</td>' +
+      '<td class="num">' + er.hit + ' / ' + er.miss + ' / ' + er.out + '</td>' +
+      '<td class="num">' + (b != null ? "¥" + b.toFixed(2) : "--") + '</td>' +
+      '<td class="num mine">' + (mine != null ? "¥" + mine.toFixed(2) : "--") + '</td>' +
+      '<td class="num pct">' + (pct != null ? pct.toFixed(1) + "%" : "--") + '</td></tr>';
+  }
+  document.getElementById("priceTable").innerHTML = buildTable("price", [
+    { key: null, label: "时段（deepseek-chat）", w: 210 },
+    { key: null, label: "生效区间", w: 180 },
+    { key: null, label: "命中/未命中/输出 元/百万", cls: "num", w: 190 },
+    { key: null, label: "官方折算价", cls: "num", w: 100 },
+    { key: null, label: "我的均价", cls: "num", w: 90 },
+    { key: null, label: "我的价 ÷ 官方", cls: "num", w: 110 }
+  ], rows);
+  renderPriceChart();
+}
+function renderPriceChart() {
+  const el = document.getElementById("priceChart");
+  const d = lastData || {};
+  const mix = { i: d.total_in || 0, c: d.total_cached || 0, o: d.total_out || 0 };
+  const mine = d.avg_per_yi != null ? d.avg_per_yi : null;
+  const vals = PRICE_ERAS.map(er => eraBlend(er, mix));
+  const maxV = Math.max(1, ...vals.filter(v => v != null), mine || 0) * 1.15;
+  const W = Math.max(300, el.clientWidth || 760), H = 235;
+  const PAD = 44, TOP = 14, BOT = 30;
+  const iw = W - PAD - 14, ih = H - TOP - BOT;
+  const n = PRICE_ERAS.length;
+  const X = i => PAD + (n === 1 ? iw / 2 : i * iw / (n - 1));
+  const Y = v => TOP + ih - v / maxV * ih;
+  let grid = "";
+  for (let g = 0; g <= 3; g++) {
+    const v = maxV * g / 3, y = Y(v);
+    grid += '<line x1="' + PAD + '" y1="' + y.toFixed(1) + '" x2="' + (W - 14) +
+            '" y2="' + y.toFixed(1) + '" stroke="#f2f3f5" stroke-width="1"></line>' +
+            '<text x="' + (PAD - 6) + '" y="' + (y + 4).toFixed(1) +
+            '" text-anchor="end" font-size="11" fill="#bbb">' + v.toFixed(0) + '</text>';
+  }
+  let pts = "", dots = "";
+  vals.forEach((v, i) => {
+    if (v == null) return;
+    const x = X(i), y = Y(v);
+    pts += (pts ? " L" : "M") + x.toFixed(1) + " " + y.toFixed(1);
+    dots += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) +
+            '" r="4" fill="#fff" stroke="#fa8c16" stroke-width="1.8"></circle>';
+  });
+  let mineLine = "", mineTxt = "";
+  if (mine != null) {
+    const y = Y(mine).toFixed(1);
+    mineLine = '<line x1="' + PAD + '" y1="' + y + '" x2="' + (W - 14) + '" y2="' + y +
+               '" stroke="#2e7d32" stroke-width="2" stroke-dasharray="6 4"></line>';
+    mineTxt = '<text x="' + (W - 16) + '" y="' + (Y(mine) - 6).toFixed(1) +
+              '" text-anchor="end" font-size="11" fill="#2e7d32" font-weight="600">我的 ¥' +
+              mine.toFixed(2) + '</text>';
+  }
+  let xlabels = "";
+  PRICE_ERAS.forEach((er, i) => {
+    xlabels += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 8) +
+               '" text-anchor="middle" font-size="11" fill="#999">' + escapeHtml(er.short) + '</text>';
+  });
+  el.innerHTML =
+    '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">' +
+    grid + mineLine + (pts ? '<path d="' + pts + '" fill="none" stroke="#fa8c16" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>' : "") +
+    dots + mineTxt + xlabels + '</svg>';
+  const points = [];
+  vals.forEach((v, i) => {
+    if (v == null) return;
+    points.push({ x: X(i), y: Y(v), text: escapeHtml(PRICE_ERAS[i].name) + "（" +
+      PRICE_ERAS[i].range + "）：官方折算价 ¥" + v.toFixed(2) + "/亿" });
+  });
+  el.__points = points;
+  bindHover(el);
+}
+const priceMask = document.getElementById("priceMask");
+document.getElementById("priceQBtn").onclick = () => {
+  priceMask.classList.add("show");
+  renderPriceModal();
+};
+document.getElementById("priceClose").onclick = () => priceMask.classList.remove("show");
+priceMask.addEventListener("mousedown", e => {
+  if (e.target === priceMask) priceMask.classList.remove("show");
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") priceMask.classList.remove("show");
+});
+
+/* ---------------- 合并模式：消耗柱状图 + API 折线合成一张 SVG ---------------- */
+function renderMergeChart(chart, apiChart) {
+  const el = document.getElementById("chart");
+  if (!chart || !chart.length) {
+    el.innerHTML = '<div class="empty" style="padding:0 22px;color:#999;font-size:12px">暂无数据</div>';
+    return;
+  }
+  const n = chart.length;
+  const maxTok = Math.max(...chart.map(c => c.tokens), 1);
+  const maxApi = Math.max(...(apiChart || []).map(c => c.api), 1);
+  const svgH = 170;
+  const W = Math.max(300, el.clientWidth - 44);
+  const PAD_L = 8, PAD_R = 8, PAD_T = 16, PAD_B = 24;
+  const iw = W - PAD_L - PAD_R, ih = svgH - PAD_T - PAD_B;
+  const step = iw / n;
+  const bw = Math.min(44, step * 0.62);
+  const barY = v => PAD_T + ih - (v / maxTok) * ih;
+  const dotX = i => PAD_L + i * step + step / 2;
+  const dotY = v => PAD_T + ih - (v / maxApi) * ih;
+  let grid = "";
+  for (let g = 1; g <= 3; g++) {
+    const y = PAD_T + ih * g / 4;
+    grid += '<line x1="' + PAD_L + '" y1="' + y.toFixed(1) + '" x2="' + (W - PAD_R) +
+            '" y2="' + y.toFixed(1) + '" stroke="#f2f3f5" stroke-width="1"></line>';
+  }
+  let bars = "", pts = "", dots = "", area = "";
+  chart.forEach((c, i) => {
+    const x = PAD_L + i * step + (step - bw) / 2;
+    const y = barY(c.tokens);
+    const bh = PAD_T + ih - y;
+    bars += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' +
+            bw.toFixed(1) + '" height="' + Math.max(0, bh).toFixed(1) +
+            '" rx="3" fill="url(#mgTok)"><title>' + escapeHtml(c.label) +
+            '：' + fmt(c.tokens) + ' tokens（¥' + c.cost.toFixed(3) + '）</title></rect>';
+  });
+  (apiChart || []).forEach((c, i) => {
+    const x = dotX(i), y = dotY(c.api);
+    pts += (i ? " L" : "M") + x.toFixed(1) + " " + y.toFixed(1);
+    dots += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) +
+            '" r="4" fill="#fff" stroke="#fa8c16" stroke-width="2"><title>' +
+            escapeHtml(c.label) + '：' + fmt(c.api) + ' 次</title></circle>';
+  });
+  if (pts) {
+    area = pts + " L" + dotX(n - 1).toFixed(1) + " " + (PAD_T + ih).toFixed(1) +
+           " L" + dotX(0).toFixed(1) + " " + (PAD_T + ih).toFixed(1) + " Z";
+  }
+  let ltxt = "";
+  chart.forEach((c, i) => {
+    let x = c.label;
+    if (n > 12 && n <= 31) x = (i % Math.ceil(n / 10) === 0 || i === n - 1) ? c.label : "";
+    else if (n > 31) x = c.label;
+    else if (n === 24) x = (i % 3 === 0) ? c.label : "";
+    if (!x) return;
+    const cx = PAD_L + i * step + step / 2;
+    ltxt += '<text x="' + cx.toFixed(1) + '" y="' + (svgH - 6) +
+            '" text-anchor="middle" font-size="11" fill="#999">' + escapeHtml(x) + '</text>';
+  });
+  el.innerHTML =
+    '<svg width="100%" height="' + svgH + '" viewBox="0 0 ' + W + ' ' + svgH + '" preserveAspectRatio="xMidYMid meet">' +
+    '<defs>' +
+    '<linearGradient id="mgTok" x1="0" y1="0" x2="0" y2="1">' +
+    '<stop offset="0%" stop-color="#5b9dff"/><stop offset="100%" stop-color="#1677ff"/></linearGradient>' +
+    '<linearGradient id="mgApi" x1="0" y1="0" x2="0" y2="1">' +
+    '<stop offset="0%" stop-color="#fa8c16" stop-opacity="0.28"/><stop offset="100%" stop-color="#fa8c16" stop-opacity="0.02"/></linearGradient>' +
+    '</defs>' + grid +
+    (area ? '<path d="' + area + '" fill="url(#mgApi)"></path>' : '') +
+    bars +
+    (pts ? '<path d="' + pts + '" fill="none" stroke="#fa8c16" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>' : '') +
+    dots + ltxt + '</svg>';
+  const tpoints = [];
+  chart.forEach((c, i) => {
+    const cx = PAD_L + i * step + step / 2;
+    tpoints.push({ x: cx, y: barY(c.tokens),
+      text: escapeHtml(c.label) + "：消耗 " + fmt(c.tokens) + " token（¥" + c.cost.toFixed(3) + "）" });
+  });
+  (apiChart || []).forEach((c, i) => {
+    const cx = PAD_L + i * step + step / 2;
+    tpoints.push({ x: cx, y: dotY(c.api),
+      text: escapeHtml(c.label) + "：API " + fmt(c.api) + " 次" });
+  });
+  el.__points = tpoints;
+  bindHover(el);
+}
+
+/* ---------------- 明细列表（日任务表 / 汇总表 / 搜索结果表） ---------------- */
+function renderList() {
+  if (editingInput && editingInput.isConnected) return;  // 正在原地改名：跳过列表重渲染
+  editingInput = null; editingTid = null;
+  const list = document.getElementById("list");
+  const title = document.getElementById("listTitle");
+
+  // —— 分组视图：跨日期展示整组任务及合计 ——
+  if (viewGroup) {
+    if (groupRows === null) {
+      list.innerHTML = '<div class="loading">加载分组…</div>';
+      return;
+    }
+    const totT = groupRows.reduce((s, r) => s + r.tokens, 0);
+    const totC = groupRows.reduce((s, r) => s + r.cost, 0);
+    title.innerHTML = '分组「' + escapeHtml(viewGroup.name) + '」<span class="tip">共 ' +
+      groupRows.length + ' 个任务 · 合计 ' + fmt(totT) + ' tokens / ¥' +
+      totC.toFixed(3) + ' · <a id="delGroup">删除此分组</a> · 右上角下拉框可关闭分组视图</span>';
+    const dg = document.getElementById("delGroup");
+    if (dg) dg.onclick = () => {
+      const g = loadGroups();
+      delete g[viewGroup.name];
+      saveGroups(g);
+      viewGroup = null; groupRows = null;
+      refreshGroupSel();
+      renderList();
+    };
+    let rows = groupRows;
+    if (onlySel) rows = rows.filter(r => selected.has(r.id));
+    if (!rows.length) {
+      lastTaskRows = [];
+      updateSelBar();
+      list.innerHTML = '<div class="empty">该分组暂无任务</div>';
+      return;
+    }
+    let body = "";
+    const grows = sortRows(rows, TASK_KM);
+    lastTaskRows = grows;
+    for (const t of grows) body += taskWithKidsHtml(t);
+    list.innerHTML = buildTable("group", [
+      { key: "t", label: "时间", cls: "", w: 150 },
+      { key: "label", label: "任务", cls: "", w: null },
+      { key: "tokens", label: "消耗 Tokens", cls: "num", w: 130 },
+      { key: "cost", label: "费用", cls: "num", w: 100 },
+      { key: null, label: "操作", cls: "", w: 60 }
+    ], body);
+    bindTable(list, "group");
+    updateSelBar();
+    return;
+  }
+
+  // —— 搜索模式：全局跨日期搜索任务 ——
+  if (searchKw) {
+    if (searchRows === null) {
+      list.innerHTML = '<div class="loading">搜索中…</div>';
+      return;
+    }
+    const totalTok = searchRows.reduce((s, r) => s + r.tokens, 0);
+    const totalCost = searchRows.reduce((s, r) => s + r.cost, 0);
+    title.innerHTML = '搜索「' + escapeHtml(searchKw) + '」<span class="tip">共 ' +
+      searchRows.length + ' 个匹配任务 · 合计 ' + fmt(totalTok) +
+      ' tokens / ¥' + totalCost.toFixed(3) + ' · 清空搜索框返回</span>';
+    if (!searchRows.length) {
+      lastTaskRows = [];
+      updateSelBar();
+      list.innerHTML = '<div class="empty">没有找到匹配的任务</div>';
+      return;
+    }
+    let body = "";
+    let srows = sortRows(searchRows, TASK_KM);
+    if (onlySel) srows = srows.filter(r => selected.has(r.id));
+    lastTaskRows = srows;
+    for (const t of srows) body += taskWithKidsHtml(t);
+    list.innerHTML = buildTable("search", [
+      { key: "t", label: "时间", cls: "", w: 150 },
+      { key: "label", label: "任务", cls: "", w: null },
+      { key: "tokens", label: "消耗 Tokens", cls: "num", w: 130 },
+      { key: "cost", label: "费用", cls: "num", w: 100 },
+      { key: null, label: "操作", cls: "", w: 60 }
+    ], body);
+    bindTable(list, "search");
+    updateSelBar();
+    flashPending();
+    return;
+  }
+
+  const d = lastData;
+  if (!d) return;
+  const tipMap = { day: "按小时", week: "按天", month: "按天", year: "按月" };
+  const tipSuffix = "点击表头排序 · 拖动表头边缘调列宽 · 单击行选中 · 双击行改名 · 拖动行到另一行可合并";
+
+  if (d.mode === "day") {
+    title.innerHTML = '任务消耗明细<span class="tip">每个任务 = 你发的一条消息，' + tipSuffix + '</span>';
+    if (!d.tasks.length) {
+      lastTaskRows = [];
+      updateSelBar();
+      list.innerHTML = '<div class="empty">这一天没有任务记录</div>';
+      return;
+    }
+    let body = "";
+    let trows = sortRows(d.tasks, TASK_KM);
+    if (onlySel) trows = trows.filter(r => selected.has(r.id));
+    lastTaskRows = trows;
+    for (const t of trows) body += taskWithKidsHtml(t);
+    list.innerHTML = buildTable("tasks", [
+      { key: "t", label: "时间", cls: "", w: 90 },
+      { key: "label", label: "任务", cls: "", w: null },
+      { key: "tokens", label: "消耗 Tokens", cls: "num", w: 130 },
+      { key: "cost", label: "费用", cls: "num", w: 100 },
+      { key: null, label: "操作", cls: "", w: 60 }
+    ], body);
+    bindTable(list, "tasks");
+    updateSelBar();
+    flashPending();
+  } else {
+    lastTaskRows = [];
+    const hasTasks = d.tasks && d.tasks.length;
+    title.innerHTML = hasTasks
+      ? '任务消耗明细<span class="tip">' + MODE_NAME[d.mode] + ' · 每个任务 = 你发的一条消息 · 点表头排序会平铺散开 · ' + tipSuffix + '</span>'
+      : '明细<span class="tip">' + tipMap[d.mode] + '汇总 · ' + tipSuffix + '</span>';
+    if (!hasTasks) {
+      const rows0 = d.breakdown.filter(r => r.tokens > 0);
+      if (!rows0.length) {
+        lastTaskRows = [];
+        updateSelBar();
+        list.innerHTML = '<div class="empty">该区间没有消耗记录</div>';
+        return;
+      }
+      rows0.forEach((r, i) => { r._i = i; });
+      const km = { t: r => r._i, tokens: r => r.tokens,
+                   rate: r => (r.rate == null ? -1 : r.rate), cost: r => r.cost };
+      let body = "";
+      for (const r of sortRows(rows0, km)) {
+        body += '<tr><td class="time">' + r.label + '</td>' +
+          '<td class="num">' + fmtT(r.tokens) + '</td>' +
+          '<td class="num">' + (r.rate != null ? (r.rate * 100).toFixed(1) + "%" : "--") + '</td>' +
+          '<td class="cost">¥' + r.cost.toFixed(3) + '</td></tr>';
+      }
+      list.innerHTML = buildTable("breakdown", [
+        { key: "t", label: d.mode === "year" ? "月份" : "日期", cls: "", w: 170 },
+        { key: "tokens", label: "消耗 Tokens", cls: "num", w: null },
+        { key: "rate", label: "缓存命中率", cls: "num", w: 130 },
+        { key: "cost", label: "费用", cls: "num", w: 110 }
+      ], body);
+      bindTable(list, "breakdown");
+      return;
+    }
+    if (sortState.key) {
+      /* 排序：平铺散开，按所选列排序（此时每行有"定位"可回到原分组序） */
+      let trows = sortRows(d.tasks, TASK_KM);
+      if (onlySel) trows = trows.filter(r => selected.has(r.id));
+      lastTaskRows = trows;
+      let body = "";
+      for (const t of trows) body += taskWithKidsHtml(t);
+      list.innerHTML = buildTable("tasks", [
+        { key: "t", label: "时间", cls: "", w: 120 },
+        { key: "label", label: "任务", cls: "", w: null },
+        { key: "tokens", label: "消耗 Tokens", cls: "num", w: 130 },
+        { key: "cost", label: "费用", cls: "num", w: 100 },
+        { key: null, label: "操作", cls: "", w: 60 }
+      ], body);
+      bindTable(list, "tasks");
+    } else {
+      /* 默认：把"天"当组头（含当天汇总，可收纳），组内是该天任务明细 */
+      let rows = d.tasks;
+      if (onlySel) rows = rows.filter(r => selected.has(r.id));
+      lastTaskRows = rows;
+      const sum = d.day_sum || {};
+      const byDay = new Map();
+      for (const t of rows) {
+        const k = t.date || "";
+        if (!byDay.has(k)) byDay.set(k, []);
+        byDay.get(k).push(t);
+      }
+      let body = "";
+      for (const k of [...byDay.keys()].sort()) {
+        const arr = byDay.get(k);
+        const info = sum[k];
+        const tok = info ? info.tokens : arr.reduce((x, r) => x + r.tokens, 0);
+        const cost = info ? info.cost : arr.reduce((x, r) => x + r.cost, 0);
+        const rate = info ? info.rate : null;
+        const collapsed = collapsedDays[k] === true;
+        body += '<tr class="day-group' + (collapsed ? " collapsed" : "") +
+          '" data-day="' + escapeAttr(k) + '"><td colspan="5"><span class="dg-arrow">' +
+          (collapsed ? "▸" : "▾") + '</span><b>' + (info ? escapeHtml(info.label) : k) +
+          '</b><span class="dg-info">' + arr.length + ' 个任务 · ' + fmt(tok) + ' tokens' +
+          (rate != null ? ' · 命中 ' + (rate * 100).toFixed(1) + "%" : "") +
+          ' · ¥' + cost.toFixed(3) + '</span></td></tr>';
+        if (!collapsed) for (const t of arr) body += taskWithKidsHtml(t);
+      }
+      list.innerHTML = buildTable("tasks", [
+        { key: "t", label: "时间", cls: "", w: 120 },
+        { key: "label", label: "任务", cls: "", w: null },
+        { key: "tokens", label: "消耗 Tokens", cls: "num", w: 130 },
+        { key: "cost", label: "费用", cls: "num", w: 100 },
+        { key: null, label: "操作", cls: "", w: 60 }
+      ], body);
+      bindTable(list, "tasks");
+      list.querySelectorAll(".day-group").forEach(tr => {
+        tr.onclick = () => {
+          const k = tr.dataset.day;
+          collapsedDays[k] = !(collapsedDays[k] === true);
+          renderList();
+        };
+      });
+    }
+    updateSelBar();
+    flashPending();
+  }
+}
+
+function render(d) {
+  document.getElementById("updated").textContent = d.updated;
+  document.getElementById("plabel").textContent = d.period_label;
+  document.getElementById("picker").value = d.date;
+  document.getElementById("balance").innerHTML =
+    (d.balance != null ? "¥" + d.balance : "--") + '<span class="unit">CNY</span>';
+  const pn = MODE_NAME[d.mode];
+  const base = d.period_short || pn;   // 今日/10/14 / 本周/10/05–10/11 / 本月/9月 / 今年/2025年
+  document.getElementById("periodName").textContent = base + "消费";
+  document.getElementById("periodName2").textContent = base + " Tokens";
+  document.getElementById("periodName3").textContent = base + "平均单次";
+  document.getElementById("periodName4").textContent = base + " API";
+  document.getElementById("period_cost").innerHTML =
+    "¥" + d.period_cost.toFixed(2) + '<span class="unit">CNY</span>';
+  document.getElementById("period_tokens").innerHTML = fmtT(d.period_tokens);
+  document.getElementById("week_cost").innerHTML =
+    "¥" + d.week_cost.toFixed(2) + '<span class="unit">CNY</span>';
+  document.getElementById("cache_rate").innerHTML =
+    (d.cache_rate != null ? (d.cache_rate * 100).toFixed(2) + "%" : "--") +
+    '<span class="unit">命中</span>';
+  document.getElementById("total_cost").innerHTML =
+    "¥" + d.total_cost.toFixed(2) + '<span class="unit">CNY</span>';
+  document.getElementById("today_api").innerHTML =
+    fmt(d.period_requests) + '<span class="unit">次</span>';
+  document.getElementById("total_api").innerHTML =
+    fmt(d.total_api) + '<span class="unit">次</span>';
+  document.getElementById("period_avg").innerHTML =
+    (d.period_avg != null ? (d.period_avg / 1e4).toFixed(2) : "--") +
+    (d.period_avg != null ? '<span class="unit">万 token/次</span>' : '');
+  document.getElementById("total_tokens").innerHTML = fmtT(d.total_tokens);
+  document.getElementById("avg_per_yi").innerHTML =
+    (d.avg_per_yi != null ? "¥" + d.avg_per_yi.toFixed(2) : "--") +
+    '<span class="unit">/亿</span>';
+
+  const tipMap = { day: "按小时", week: "按天", month: "按天", year: "按月" };
+  document.getElementById("chartTip").textContent =
+    tipMap[d.mode] + "统计 · 本区" + "间共 " + fmt(d.period_requests) + " 次 API 请求";
+  if (chartMode === "merge") {
+    renderMergeChart(d.chart, d.api_chart);
+    document.getElementById("chartSub").textContent =
+      "蓝色柱 = 消耗 token，橙色折线 = API 次数，悬停查看数值";
+  } else {
+    renderChart(d.chart);
+    document.getElementById("chartSub").textContent = "悬停柱子可查看具体数值";
+    renderApiChart(d.api_chart);
+  }
+  document.getElementById("apiChartTip").textContent =
+    tipMap[d.mode] + "统计 · API 调用次数";
+  document.getElementById("apiChartSub").textContent =
+    "悬停圆点可查看具体次数";
+
+  renderList();
+}
+
+function refresh() {
+  if (window.pywebview && window.pywebview.api) {
+    window.pywebview.api.get_data(state.date, state.mode).then(d => {
+      lastData = d;
+      render(d);
+    });
+    if (searchKw) runSearch();  // 搜索状态下也跟随刷新
+    if (viewGroup) loadGroupRows();  // 分组视图跟随刷新
+  } else {
+    setTimeout(refresh, 300);
+  }
+}
+setInterval(refresh, 5000);
+refresh();
+
+/* 面板管理初始化：默认布局（左右图表 + 面板顺序）/ 收纳按钮 / 拖拽排序 / 明细区高度调整 */
+applyOrder();
+updateLayBtns();
+applyChartLayout();
+initPanelOps();
+initPanelDrag();
+initListResize();
+</script>
+</body>
+</html>
