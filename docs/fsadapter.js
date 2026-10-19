@@ -146,34 +146,31 @@
   }
 
   function walk(dir, prefix, out, depth) {
-    if (depth > 8) return Promise.resolve();
-    var reader = dir.createReader();
-    return new Promise(function (resolve) {
-      var readBatch = function () {
-        reader.readEntries(function (entries) {
-          if (!entries.length) return resolve();
-          var chain = Promise.resolve();
-          entries.forEach(function (ent) {
-            if (ent.name.charAt(0) === ".") return;
-            if (ent.isFile && /^rollout-.*\.jsonl$/.test(ent.name)) {
-              out.push({ handle: ent, path: prefix + ent.name });
-            } else if (ent.isDirectory) {
-              chain = chain.then(function () {
-                return walk(ent, prefix + ent.name + "/", out, depth + 1);
-              });
-            }
-          });
-          chain.then(readBatch, function () { resolve(); });
-        }, function () { resolve(); });
-      };
-      readBatch();
-    });
+    if (depth > 8 || !dir.values) return Promise.resolve();
+    var it = dir.values();  // FileSystemDirectoryHandle 的异步迭代器
+    function step() {
+      return it.next().then(function (r) {
+        if (r.done) return;
+        var ent = r.value, next = Promise.resolve();
+        if (ent.name.charAt(0) !== ".") {
+          if (ent.kind === "file" && /^rollout-.*\.jsonl$/.test(ent.name)) {
+            out.push({ handle: ent, path: prefix + ent.name });
+          } else if (ent.kind === "directory") {
+            next = walk(ent, prefix + ent.name + "/", out, depth + 1);
+          }
+        }
+        return next.then(step);
+      });
+    }
+    return step();
   }
 
   function scanAll() {
     if (!rootHandle || scanning) return Promise.resolve();
     scanning = true;
-    return walk(rootHandle, "", [], 0).then(function (files) {
+    return Promise.resolve().then(function () {
+      return walk(rootHandle, "", [], 0);
+    }).then(function (files) {
       fileCount = files.length;
       var chain = Promise.resolve();
       files.forEach(function (f) {
