@@ -106,7 +106,7 @@
               min-height: 2px; transition: height .3s; }
   .col.dim .bar { background: #bcd7ff; }
   .col .x { font-size: 11px; color: #999; margin-top: 6px; white-space: nowrap;
-            transform: scale(.85); }
+            transform: scale(.85); min-height: 14px; }
   .chart-tip { font-size: 12px; color: #888; padding: 0 22px 8px; text-align: right; }
 
   /* API 折线图 */
@@ -334,7 +334,7 @@
   </div>
 </div>
 
-<script src="fsadapter.js"></script>
+<script src='fsadapter.js'></script>
 <script>
 function fmt(n) { return n == null ? "--" : n.toLocaleString("en-US"); }
 function fmtTokens(n) {
