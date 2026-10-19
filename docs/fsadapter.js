@@ -146,11 +146,11 @@
   }
 
   function walk(dir, prefix, out, depth) {
-    if (depth > 8 || !dir.values) return Promise.resolve();
+    if (depth > 8 || !dir.values) return Promise.resolve(out);
     var it = dir.values();  // FileSystemDirectoryHandle 的异步迭代器
     function step() {
       return it.next().then(function (r) {
-        if (r.done) return;
+        if (r.done) return out;
         var ent = r.value, next = Promise.resolve();
         if (ent.name.charAt(0) !== ".") {
           if (ent.kind === "file" && /^rollout-.*\.jsonl$/.test(ent.name)) {
